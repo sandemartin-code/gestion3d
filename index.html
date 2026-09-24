@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gestión 3D</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 md:pb-6">
+
+  <!-- Header Superior -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700/80 sticky top-0 z-50 px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">⚙️</span>
+      <h1 class="text-lg font-bold text-amber-500">Gestión 3D</h1>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="cambiarTab('lista')" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg font-semibold">📋 Pedidos</button>
+      <button onclick="cambiarTab('nuevo')" class="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg font-semibold">+ Nuevo Pedido</button>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto p-4">
+
+    <!-- SECCIÓN 1: LISTADO DE PEDIDOS -->
+    <section id="tab-lista" class="space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-slate-200">Pedidos Registrados</h2>
+        <button onclick="cargarPedidos()" class="text-xs text-slate-400 hover:text-slate-200">🔄 Actualizar</button>
+      </div>
+      <div id="lista-pedidos" class="space-y-3">
+        <!-- Se llena dinámicamente -->
+      </div>
+    </section>
+
+    <!-- SECCIÓN 2: FORMULARIO NUEVO PEDIDO / PRESUPUESTO -->
+    <section id="tab-nuevo" class="hidden space-y-5">
+      <h2 class="text-lg font-semibold text-amber-500">Nuevo Pedido & Presupuesto</h2>
+      
+      <form id="form-pedido" onsubmit="guardarPedido(event)" class="space-y-4 bg-slate-800/60 p-4 rounded-xl border border-slate-700">
+        
+        <!-- Datos de Cabecera -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ID Pedido</label>
+            <input type="text" id="id_pedido" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-amber-400 font-mono font-bold" value="PED-001">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Cliente</label>
+            <input type="text" id="cliente" placeholder="Nombre y Apellido" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Teléfono (WhatsApp)</label>
+            <input type="tel" id="telefono" placeholder="Ej: 5491122334455" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Estado Inicial</label>
+            <select id="estado" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+              <option value="Ingresado" selected>Ingresado</option>
+              <option value="Presupuestado">Presupuestado</option>
+              <option value="Aceptado">Aceptado</option>
+              <option value="Imprimiendo">Imprimiendo</option>
+              <option value="Terminado">Terminado</option>
+              <option value="Entregado">Entregado</option>
+            </select>
+          </div>
+        </div>
+
+        <hr class="border-slate-700/80 my-2">
+
+        <!-- Selector de Tipo de Cotización -->
+        <div>
+          <label class="block text-xs text-slate-400 mb-1 font-semibold">Tipo de Ítem a Cargar</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btn-tipo-custom" onclick="seleccionarTipoItem('custom')" class="py-2 text-xs font-bold rounded-lg border border-amber-500 bg-amber-500/20 text-amber-400">⚡ Pieza a Medida</button>
+            <button type="button" id="btn-tipo-prod" onclick="seleccionarTipoItem('producto')" class="py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-900 text-slate-400">📦 Producto Catálogo</button>
+          </div>
+        </div>
+
+        <!-- Campos para PIEZA A MEDIDA -->
+        <div id="campos-custom" class="space-y-3 bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Descripción de la pieza</label>
+            <input type="text" id="desc_custom" placeholder="Ej: Repuesto Cap o Soporte Tablero" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Tipo Filamento</label>
+              <select id="costo_gramo" onchange="calcularPresupuesto()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+                <option value="25">PLA ($25/g)</option>
+                <option value="30">PETG ($30/g)</option>
+                <option value="40">TPU 95A ($40/g)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Peso (Gramos)</label>
+              <input type="number" id="peso_gramos" oninput="calcularPresupuesto()" value="45" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Horas Impresión</label>
+              <input type="number" step="0.1" id="horas_impresion" oninput="calcularPresupuesto()" value="3.5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Costo Hora Maq.</label>
+              <input type="number" id="costo_hora_maq" oninput="calcularPresupuesto()" value="450" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Extras (Tornillos/Insumos)</label>
+              <input type="number" id="extras" oninput="calcularPresupuesto()" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Margen Ganancia (%)</label>
+              <input type="number" id="margen" oninput="calcularPresupuesto()" value="100" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos para PRODUCTO DEL CATÁLOGO -->
+        <div id="campos-producto" class="hidden space-y-3 bg-slate-900/60 p-3 rounded-lg border border-slate-700/50">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Producto del Catálogo</label>
+            <select id="select_producto" onchange="actualizarPrecioProducto()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+              <option value="" data-precio="0">-- Seleccionar Producto --</option>
+              <option value="PROD-01" data-precio="3500">Mate 3D Personalizado - $3,500</option>
+              <option value="PROD-02" data-precio="1800">Soporte Celular Escritorio - $1,800</option>
+              <option value="PROD-03" data-precio="2500">Llavero Pokémon Gen 1 - $2,500</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Precio Unitario ($)</label>
+            <input type="number" id="precio_prod_unitario" oninput="calcularPresupuesto()" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+        </div>
+
+        <!-- Cantidad y Anticipo General -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Cantidad</label>
+            <input type="number" id="cantidad" oninput="calcularPresupuesto()" value="1" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Seña / Anticipo ($)</label>
+            <input type="number" id="anticipo" oninput="calcularPresupuesto()" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm">
+          </div>
+        </div>
+
+        <!-- Resumen Financiero Dinámico -->
+        <div class="bg-slate-900 p-3 rounded-xl border border-amber-500/40 flex justify-between items-center mt-2">
+          <div>
+            <p class="text-xs text-slate-400">Total Presupuesto</p>
+            <p id="txt-total" class="text-xl font-black text-amber-400">$0.00</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-slate-400">Saldo Pendiente</p>
+            <p id="txt-saldo" class="text-lg font-bold text-red-400">$0.00</p>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-xl font-bold text-white shadow-lg transition">
+          💾 Guardar Pedido
+        </button>
+      </form>
+    </section>
+
+  </main>
+
+  <script>
+    let tipoActual = 'custom';
+    
+    // Al estar el frontend y backend juntos en Vercel, usamos la ruta relativa
+    const API_URL = "/api";
+
+    function cambiarTab(tab) {
+      if (tab === 'lista') {
+        document.getElementById('tab-lista').classList.remove('hidden');
+        document.getElementById('tab-nuevo').classList.add('hidden');
+        cargarPedidos();
+      } else {
+        document.getElementById('tab-lista').classList.add('hidden');
+        document.getElementById('tab-nuevo').classList.remove('hidden');
+        calcularPresupuesto();
+      }
+    }
+
+    function seleccionarTipoItem(tipo) {
+      tipoActual = tipo;
+      const btnCustom = document.getElementById('btn-tipo-custom');
+      const btnProd = document.getElementById('btn-tipo-prod');
+      const boxCustom = document.getElementById('campos-custom');
+      const boxProd = document.getElementById('campos-producto');
+
+      if (tipo === 'custom') {
+        btnCustom.className = "py-2 text-xs font-bold rounded-lg border border-amber-500 bg-amber-500/20 text-amber-400";
+        btnProd.className = "py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-900 text-slate-400";
+        boxCustom.classList.remove('hidden');
+        boxProd.classList.add('hidden');
+      } else {
+        btnProd.className = "py-2 text-xs font-bold rounded-lg border border-amber-500 bg-amber-500/20 text-amber-400";
+        btnCustom.className = "py-2 text-xs font-bold rounded-lg border border-slate-700 bg-slate-900 text-slate-400";
+        boxProd.classList.remove('hidden');
+        boxCustom.classList.add('hidden');
+      }
+      calcularPresupuesto();
+    }
+
+    function actualizarPrecioProducto() {
+      const select = document.getElementById('select_producto');
+      const precio = select.options[select.selectedIndex].getAttribute('data-precio') || 0;
+      document.getElementById('precio_prod_unitario').value = precio;
+      calcularPresupuesto();
+    }
+
+    function calcularPresupuesto() {
+      const cantidad = parseFloat(document.getElementById('cantidad').value) || 1;
+      const anticipo = parseFloat(document.getElementById('anticipo').value) || 0;
+      let total = 0;
+
+      if (tipoActual === 'producto') {
+        const precioUnit = parseFloat(document.getElementById('precio_prod_unitario').value) || 0;
+        total = cantidad * precioUnit;
+      } else {
+        const costoGramo = parseFloat(document.getElementById('costo_gramo').value) || 0;
+        const pesoGramos = parseFloat(document.getElementById('peso_gramos').value) || 0;
+        const horas = parseFloat(document.getElementById('horas_impresion').value) || 0;
+        const costoHora = parseFloat(document.getElementById('costo_hora_maq').value) || 0;
+        const extras = parseFloat(document.getElementById('extras').value) || 0;
+        const margen = parseFloat(document.getElementById('margen').value) || 0;
+
+        const costoBase = (pesoGramos * costoGramo) + (horas * costoHora) + extras;
+        total = costoBase * (1 + (margen / 100)) * cantidad;
+      }
+
+      const saldo = total - anticipo;
+      document.getElementById('txt-total').innerText = `$${total.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+      document.getElementById('txt-saldo').innerText = `$${saldo.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+    }
+
+    async function cargarPedidos() {
+      const contenedor = document.getElementById('lista-pedidos');
+      contenedor.innerHTML = `<p class="text-slate-400 text-xs">Cargando pedidos...</p>`;
+      try {
+        const res = await fetch(`${API_URL}/pedidos`);
+        const data = await res.json();
+        contenedor.innerHTML = "";
+
+        if (data.length === 0) {
+          contenedor.innerHTML = `<p class="text-slate-500 text-xs">No hay pedidos registrados aún.</p>`;
+          return;
+        }
+
+        data.forEach(p => {
+          const saldoRojo = p.saldo_pendiente > 0 ? "text-red-400 font-bold" : "text-emerald-400";
+          const msgWa = `Hola ${p.cliente}! Te paso el resumen de tu pedido #${p.id_pedido}:\n• Total: $${p.total_presupuesto}\n• Anticipo: $${p.anticipo}\n• Saldo Pendiente: $${p.saldo_pendiente}\nEstado: ${p.estado}`;
+          const waUrl = `https://wa.me/${p.telefono}?text=${encodeURIComponent(msgWa)}`;
+
+          contenedor.innerHTML += `
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex justify-between items-center shadow-md">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-amber-400 font-mono">#${p.id_pedido}</span>
+                  <span class="text-xs bg-slate-900 border border-slate-700 px-2.5 py-0.5 rounded-full text-slate-300 font-semibold">${p.estado}</span>
+                </div>
+                <p class="text-sm font-semibold text-slate-200 mt-1">${p.cliente}</p>
+                <p class="text-xs text-slate-400 mt-0.5">Total: $${p.total_presupuesto.toFixed(2)} | <span class="${saldoRojo}">Saldo: $${p.saldo_pendiente.toFixed(2)}</span></p>
+              </div>
+              <div>
+                <a href="${waUrl}" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 p-2.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 shadow">
+                  💬 WA
+                </a>
+              </div>
+            </div>
+          `;
+        });
+      } catch (e) {
+        contenedor.innerHTML = `<p class="text-red-400 text-xs">Error al conectar con el backend de Vercel.</p>`;
+      }
+    }
+
+    async function guardarPedido(e) {
+      e.preventDefault();
+      const pedidoPayload = {
+        id_pedido: document.getElementById('id_pedido').value,
+        id_cliente: "CLI-TEMP",
+        estado: document.getElementById('estado').value,
+        anticipo: parseFloat(document.getElementById('anticipo').value) || 0,
+        items: [{
+          id_material: tipoActual === 'custom' ? "MAT-01" : null,
+          id_producto: tipoActual === 'producto' ? document.getElementById('select_producto').value : null,
+          descripcion_producto: tipoActual === 'custom' ? document.getElementById('desc_custom').value : "Producto Catálogo",
+          cantidad: parseInt(document.getElementById('cantidad').value) || 1,
+          precio_producto: parseFloat(document.getElementById('precio_prod_unitario').value) || 0,
+          peso_gramos: parseFloat(document.getElementById('peso_gramos').value) || 0,
+          horas_impresion: parseFloat(document.getElementById('horas_impresion').value) || 0,
+          costo_hora_maquina: parseFloat(document.getElementById('costo_hora_maq').value) || 0,
+          extras: parseFloat(document.getElementById('extras').value) || 0,
+          margen_porcentaje: parseFloat(document.getElementById('margen').value) || 100
+        }]
+      };
+
+      try {
+        const res = await fetch(`${API_URL}/pedidos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pedidoPayload)
+        });
+        if (res.ok) {
+          alert("¡Pedido guardado exitosamente!");
+          cambiarTab('lista');
+        } else {
+          alert("Error al guardar pedido.");
+        }
+      } catch (e) {
+        alert("Error de red al conectar con el servidor.");
+      }
+    }
+
+    // Registrar Service Worker para soporte PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      calcularPresupuesto();
+      cargarPedidos();
+    });
+  </script>
+</body>
+</html>
